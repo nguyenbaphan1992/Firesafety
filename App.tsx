@@ -5,12 +5,19 @@ import SafetyMap from './components/SafetyMap';
 import { MUSTER_POINTS } from './constants';
 import { Location } from './types';
 import { getSafetyGuidance } from './services/geminiService';
+import { submitAttendance } from './services/attendanceService';
 
 const App: React.FC = () => {
   const [selectedZoneId, setSelectedZoneId] = useState<string>('');
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [aiTips, setAiTips] = useState<string>('');
   const [isLoadingTips, setIsLoadingTips] = useState<boolean>(false);
+  
+  // Attendance State
+  const [userName, setUserName] = useState('');
+  const [employeeId, setEmployeeId] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   
   // Vị trí trực tuyến
   const [isNavEnabled, setIsNavEnabled] = useState<boolean>(false);
@@ -22,6 +29,36 @@ const App: React.FC = () => {
     setSelectedZoneId(zoneId);
     const location = MUSTER_POINTS.find(m => m.id === zoneId) || null;
     setSelectedLocation(location);
+    setIsSubmitted(false); // Reset status when zone changes
+  };
+
+  const handleRollCall = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedZoneId) {
+      alert("Vui lòng chọn khu vực trước!");
+      return;
+    }
+    if (!userName.trim()) {
+      alert("Vui lòng nhập họ tên!");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await submitAttendance({
+        name: userName,
+        employeeId: employeeId,
+        zoneId: selectedZoneId,
+        coords: userCoords ? `${userCoords.lat}, ${userCoords.lng}` : "No GPS"
+      });
+      setIsSubmitted(true);
+      setUserName('');
+      setEmployeeId('');
+    } catch (error) {
+      alert("Lỗi đồng bộ dữ liệu. Vui lòng thử lại.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const toggleNavigation = () => {
@@ -50,7 +87,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Theo dõi vị trí liên tục khi bật chỉ đường
   useEffect(() => {
     let watchId: number;
     if (isNavEnabled && "geolocation" in navigator) {
@@ -133,24 +169,74 @@ const App: React.FC = () => {
                 </button>
               </div>
               {geoError && <p className="mt-2 text-[10px] text-red-500 font-medium px-1">{geoError}</p>}
+            </div>
 
-              {selectedLocation && (
-                <div className="mt-6 p-4 bg-orange-50 rounded-xl border border-orange-100">
-                  <h4 className="text-orange-800 font-bold text-sm mb-2 flex items-center gap-2">
-                    <i className="fa-solid fa-circle-exclamation"></i>
-                    THÔNG TIN KHU VỰC / ZONE INFO
-                  </h4>
-                  <ul className="space-y-2 text-sm text-orange-700">
-                    <li className="flex justify-between">
-                      <span className="opacity-75">Tên:</span>
-                      <span className="font-semibold">{selectedLocation.name}</span>
-                    </li>
-                    <li className="flex justify-between">
-                      <span className="opacity-75">Sức chứa:</span>
-                      <span className="font-semibold text-orange-800">1000 - 2000 người</span>
-                    </li>
-                  </ul>
+            {/* Attendance / Roll Call Panel */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border-2 border-red-100">
+              <h3 className="text-lg font-bold text-red-600 mb-4 flex items-center gap-2">
+                <i className="fa-solid fa-clipboard-user"></i>
+                ĐIỂM DANH KHẨN CẤP
+              </h3>
+              
+              {isSubmitted ? (
+                <div className="bg-green-50 text-green-700 p-4 rounded-xl border border-green-200 animate-in zoom-in-95 duration-300">
+                  <div className="flex items-center gap-2 mb-1">
+                    <i className="fa-solid fa-circle-check text-xl"></i>
+                    <span className="font-bold">ĐÃ XÁC NHẬN CÓ MẶT</span>
+                  </div>
+                  <p className="text-xs">Thông tin của bạn đã được gửi đến hệ thống quản lý an toàn.</p>
+                  <button 
+                    onClick={() => setIsSubmitted(false)}
+                    className="mt-3 text-[10px] font-bold uppercase tracking-wider text-green-800 underline"
+                  >
+                    Điểm danh lại
+                  </button>
                 </div>
+              ) : (
+                <form onSubmit={handleRollCall} className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Họ và tên / Full Name</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={userName}
+                      onChange={(e) => setUserName(e.target.value)}
+                      placeholder="Nhập tên của bạn..."
+                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:outline-none transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Mã nhân viên (nếu có)</label>
+                    <input 
+                      type="text" 
+                      value={employeeId}
+                      onChange={(e) => setEmployeeId(e.target.value)}
+                      placeholder="VD: NV1234..."
+                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:outline-none transition-all"
+                    />
+                  </div>
+                  <button 
+                    type="submit"
+                    disabled={isSubmitting || !selectedZoneId}
+                    className={`w-full py-3 rounded-xl font-bold text-sm shadow-lg transition-all flex items-center justify-center gap-2 ${
+                      !selectedZoneId 
+                        ? 'bg-slate-200 text-slate-400 cursor-not-allowed' 
+                        : 'bg-red-600 text-white hover:bg-red-700 active:scale-95'
+                    }`}
+                  >
+                    {isSubmitting ? (
+                      <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <i className="fa-solid fa-check-to-slot"></i>
+                    )}
+                    XÁC NHẬN CÓ MẶT
+                  </button>
+                  {!selectedZoneId && (
+                    <p className="text-[10px] text-center text-red-500 font-medium italic">
+                      * Vui lòng chọn khu vực phía trên trước khi điểm danh.
+                    </p>
+                  )}
+                </form>
               )}
             </div>
 
@@ -260,6 +346,24 @@ const App: React.FC = () => {
                   <div className="h-4 w-1 bg-blue-400"></div>
                   <span className="text-xs font-semibold text-slate-600">Đường thoát nạn</span>
                 </div>
+              </div>
+              
+              {/* Admin Access Section */}
+              <div className="mt-12 pt-8 border-t border-slate-200">
+                <button 
+                  onClick={() => {
+                    const pass = prompt("Nhập mật khẩu Admin để xem danh sách điểm danh:");
+                    if (pass === "admin123") {
+                      window.open("https://docs.google.com/spreadsheets/", "_blank");
+                    } else if (pass !== null) {
+                      alert("Mật khẩu không đúng.");
+                    }
+                  }}
+                  className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 transition-colors"
+                >
+                  <i className="fa-solid fa-lock"></i>
+                  Truy cập dữ liệu Admin / Admin Data Access
+                </button>
               </div>
             </div>
           </div>
