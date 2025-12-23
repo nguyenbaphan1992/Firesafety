@@ -1,0 +1,7 @@
+{
+  "name": "Regent 1_FireSafety Assembly Points",
+  "description": "An emergency response application for locating safe muster points and receiving AI-powered fire safety guidance for specific building zones.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
