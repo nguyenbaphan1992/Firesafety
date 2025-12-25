@@ -67,6 +67,30 @@ const App: React.FC = () => {
     }
   };
 
+  const exportReport = () => {
+    if (attendanceList.length === 0) {
+      alert("Không có dữ liệu để xuất.");
+      return;
+    }
+
+    const headers = ["Thoi gian", "Ho ten", "MSNV", "Khu vuc", "Toa do"];
+    const csvContent = [
+      headers.join(","),
+      ...attendanceList.map(item => 
+        [item.timestamp, `"${item.name}"`, item.employeeId, item.zoneId, `"${item.coords}"`].join(",")
+      )
+    ].join("\n");
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Bao_cao_diem_danh_${new Date().toLocaleDateString()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const toggleAdmin = () => {
     if (isAdminMode) {
       setIsAdminMode(false);
@@ -127,7 +151,13 @@ const App: React.FC = () => {
                 </h2>
                 <p className="text-slate-500 text-sm">Danh sách nhân viên đã xác nhận an toàn tại các điểm tập kết.</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <button 
+                  onClick={exportReport}
+                  className="px-4 py-2 bg-green-600 text-white rounded-xl font-bold text-xs hover:bg-green-700 transition-colors flex items-center gap-2"
+                >
+                  <i className="fa-solid fa-file-export"></i> XUẤT BÁO CÁO (CSV)
+                </button>
                 <button 
                   onClick={() => {
                     if(confirm("Bạn có chắc chắn muốn xóa toàn bộ danh sách tạm thời này?")) {
@@ -255,13 +285,32 @@ const App: React.FC = () => {
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <h3 className="font-bold text-slate-800 mb-4 text-sm uppercase tracking-wider">Liên hệ khẩn cấp</h3>
                 <div className="space-y-2">
-                  <a href="tel:0902068951" className="block p-3 bg-slate-50 border rounded-xl hover:bg-slate-100">
-                    <p className="font-bold text-sm">Nguyễn Bá Phan</p>
-                    <p className="text-[10px] text-slate-500">CB An toàn - 0902068951</p>
+                  <a href="tel:0902068951" className="block p-3 bg-slate-50 border rounded-xl hover:bg-slate-100 transition-colors">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-bold text-sm text-slate-900">Nguyễn Bá Phan</p>
+                        <p className="text-[10px] text-slate-500">HSE sr.officer</p>
+                      </div>
+                      <span className="text-red-600 font-bold text-xs">0902068 951</span>
+                    </div>
                   </a>
-                  <a href="tel:0966513996" className="block p-3 bg-slate-50 border rounded-xl hover:bg-slate-100">
-                    <p className="font-bold text-sm">Trần Văn Quang</p>
-                    <p className="text-[10px] text-slate-500">CB An toàn - 0966513996</p>
+                  <a href="tel:0943607669" className="block p-3 bg-slate-50 border rounded-xl hover:bg-slate-100 transition-colors">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-bold text-sm text-slate-900">Nguyễn Sơn Tùng</p>
+                        <p className="text-[10px] text-slate-500">HSE officer</p>
+                      </div>
+                      <span className="text-red-600 font-bold text-xs">0943607669</span>
+                    </div>
+                  </a>
+                  <a href="tel:0817906072" className="block p-3 bg-slate-50 border rounded-xl hover:bg-slate-100 transition-colors">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-bold text-sm text-slate-900">Đoàn Trọng Lân</p>
+                        <p className="text-[10px] text-slate-500">Đội trưởng PCCC</p>
+                      </div>
+                      <span className="text-red-600 font-bold text-xs">0817906072</span>
+                    </div>
                   </a>
                 </div>
               </div>

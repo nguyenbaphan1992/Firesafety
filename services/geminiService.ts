@@ -1,32 +1,39 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// Khởi tạo client với API Key từ môi trường
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const getSafetyGuidance = async (zoneId: string, description: string) => {
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `You are a fire safety expert. Provide bilingual instructions (Vietnamese and English) for someone in zone ${zoneId}.
-      The designated assembly point instruction is: "${description}".
-      
-      Mandatory points to include:
-      1. Stay low to avoid smoke / Cúi thấp người để tránh khói.
-      2. Do not use elevators, use stairs only / Không sử dụng thang máy, chỉ sử dụng cầu thang bộ.
-      3. Specific assembly point info: ${description} / Lưu ý điểm tập kết của bạn là: ${description}.
-      4. Roll call: Perform roll call at assembly point and report missing persons immediately to supervisors / Thực hiện điểm danh khi ra đến điểm tập kết an toàn và báo cáo lại ngay cho người phụ trách nếu thấy thiếu người.
-      
-      Format as a clear, urgent list with emojis. Vietnamese first, then English translation for each point. Keep it concise.`,
+      model: 'gemini-flash-latest', // Sử dụng bản stable để tránh lỗi RPC/XHR trên các model preview
+      contents: [
+        { 
+          parts: [{ text: `Tôi đang ở khu vực ${zoneId}. Điểm tập kết an toàn của tôi là: ${description}. Hãy cho tôi hướng dẫn thoát hiểm khẩn cấp ngay bây giờ.` }] 
+        }
+      ],
       config: {
-        temperature: 0.4,
+        systemInstruction: `You are a fire safety expert at Tinh Loi Factory. 
+        Provide bilingual instructions (Vietnamese first, then English) that are urgent, clear, and concise.
+        
+        Key points to always include:
+        1. Low posture for smoke avoidance.
+        2. Use stairs only (No elevators).
+        3. Mandatory roll call at assembly point.
+        4. Special note for Visitors/Contractors: Must follow local fire safety staff and evacuate to the nearest safe assembly point.
+        
+        Use emojis for visibility. Format as a bulleted list.`,
+        temperature: 0.3, // Giảm độ ngẫu nhiên để phản hồi nhanh và chính xác hơn
         topP: 0.8,
         topK: 40
       }
     });
 
-    return response.text || "Vui lòng giữ bình tĩnh và di chuyển đến điểm tập kết an toàn.";
+    // Truy cập trực tiếp thuộc tính .text (không phải phương thức)
+    return response.text || "Vui lòng giữ bình tĩnh, cúi thấp người và di chuyển ngay đến điểm tập kết an toàn.";
   } catch (error) {
-    console.error("Gemini API Error:", error);
-    return "Cúi thấp người, không dùng thang máy, di chuyển đến điểm tập kết an toàn và thực hiện điểm danh.";
+    console.error("Gemini API Error details:", error);
+    return "CẢNH BÁO: Di chuyển ngay đến điểm tập kết an toàn. Cúi thấp người tránh khói, không dùng thang máy và báo cáo có mặt khi đến nơi.";
   }
 };
